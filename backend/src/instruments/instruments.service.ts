@@ -36,4 +36,10 @@ export class InstrumentsService {
   findAll() {
     return this.instruments;
   }
+
+  findBySymbol(symbol: string) {
+    return this.instruments.find(
+      (item) => item.symbol === symbol,
+    );
+  }
 }

@@ -32,6 +32,7 @@ export type BuyTradeResponse = {
   total: number;
   remainingCash: number;
   positionQuantity: number;
+  averagePurchasePrice?: number;
 };
 
 export async function buyInstrument(
@@ -48,7 +49,85 @@ export async function buyInstrument(
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.message ?? 'Pirkumu neizdevās veikt');
+    throw new Error(
+      data.message ?? 'Pirkumu neizdevās veikt',
+    );
+  }
+
+  return data;
+}
+
+export type PortfolioPosition = {
+  symbol: string;
+  quantity: number;
+  currentPrice: number;
+  averagePurchasePrice: number;
+  marketValue: number;
+  investedCost: number;
+  profitLoss: number;
+  profitLossPercent: number;
+  concentrationPercent: number;
+};
+
+export type PortfolioResponse = {
+  cash: number;
+  investedValue: number;
+  totalValue: number;
+  totalProfitLoss: number;
+  totalProfitLossPercent: number;
+  highestConcentration: number;
+  riskLevel: 'HIGH' | 'NORMAL';
+  positions: PortfolioPosition[];
+};
+
+export async function getPortfolio(): Promise<PortfolioResponse> {
+  const response = await fetch(
+    `${API_URL}/trades/portfolio`,
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      'Neizdevās ielādēt portfeli',
+    );
+  }
+
+  return response.json();
+}
+
+export type SellTradeRequest = {
+  symbol: string;
+  quantity: number;
+  price: number;
+};
+
+export type SellTradeResponse = {
+  success: boolean;
+  symbol: string;
+  quantity: number;
+  price: number;
+  total: number;
+  realizedProfitLoss: number;
+  remainingCash: number;
+  remainingQuantity: number;
+};
+
+export async function sellInstrument(
+  trade: SellTradeRequest,
+): Promise<SellTradeResponse> {
+  const response = await fetch(`${API_URL}/trades/sell`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(trade),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      data.message ?? 'Pārdošanu neizdevās veikt',
+    );
   }
 
   return data;
