@@ -1,10 +1,18 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+} from '@nestjs/common';
+
 import { TradesService } from './trades.service.js';
+import { InstrumentsService } from '../instruments/instruments.service.js';
 
 @Controller('trades')
 export class TradesController {
   constructor(
     private readonly tradesService: TradesService,
+    private readonly instrumentsService: InstrumentsService,
   ) {}
 
   @Post('buy')
@@ -23,8 +31,36 @@ export class TradesController {
     );
   }
 
+  @Post('sell')
+sell(
+  @Body()
+  body: {
+    symbol: string;
+    quantity: number;
+    price: number;
+  },
+) {
+  return this.tradesService.sell(
+    body.symbol,
+    body.quantity,
+    body.price,
+  );
+}
+
   @Get('portfolio')
   getPortfolio() {
-    return this.tradesService.getPortfolio();
+    const instruments =
+      this.instrumentsService.findAll();
+
+    const prices = Object.fromEntries(
+      instruments.map((instrument) => [
+        instrument.symbol,
+        instrument.price,
+      ]),
+    );
+
+    return this.tradesService.getPortfolio(
+      prices,
+    );
   }
 }
