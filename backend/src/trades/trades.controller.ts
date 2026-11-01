@@ -47,6 +47,11 @@ sell(
   );
 }
 
+@Get('history')
+getHistory() {
+  return this.tradesService.getHistory();
+}
+
   @Get('portfolio')
   getPortfolio() {
     const instruments =

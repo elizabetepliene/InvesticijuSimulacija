@@ -75,7 +75,9 @@ export default function PortfolioScreen() {
     <SafeAreaView style={styles.page}>
       <View style={styles.phoneShell}>
         <View style={styles.header}>
-          <Text style={styles.headerBrand}>augt</Text>
+          <Text style={styles.headerBrand}>
+            augt
+          </Text>
 
           <Text style={styles.headerTitle}>
             Portfelis
@@ -171,6 +173,17 @@ export default function PortfolioScreen() {
                     : 'Neviena pozīcija nepārsniedz 70% no ieguldītās portfeļa vērtības.'}
                 </Text>
               </View>
+
+              <Pressable
+                style={styles.historyButton}
+                onPress={() =>
+                  router.push('/history')
+                }
+              >
+                <Text style={styles.historyButtonText}>
+                  Skatīt darījumu vēsturi →
+                </Text>
+              </Pressable>
 
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>
@@ -445,6 +458,23 @@ const styles = StyleSheet.create({
     color: '#6D6B7D',
     fontSize: 11,
     lineHeight: 17,
+  },
+
+  historyButton: {
+    marginTop: 16,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E9E8EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  historyButtonText: {
+    color: '#584DBD',
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   sectionHeader: {

@@ -9,6 +9,7 @@ export default function RootLayout() {
       <Stack.Screen name="trade/review" />
       <Stack.Screen name="trade/success" />
       <Stack.Screen name="trade/sell" />
+      <Stack.Screen name="history" />
     </Stack>
   );
 }

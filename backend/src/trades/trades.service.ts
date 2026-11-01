@@ -2,6 +2,17 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 
 type InstrumentPriceMap = Record<string, number>;
 
+type TradeHistoryItem = {
+  id: number;
+  type: 'BUY' | 'SELL';
+  symbol: string;
+  quantity: number;
+  price: number;
+  total: number;
+  realizedProfitLoss?: number;
+  createdAt: string;
+};
+
 @Injectable()
 export class TradesService {
   private cash = 3724.18;
@@ -18,6 +29,10 @@ export class TradesService {
     NVDA: 105.0,
   };
 
+  private tradeHistory: TradeHistoryItem[] = [];
+
+  private nextTradeId = 1;
+
   buy(symbol: string, quantity: number, price: number) {
     if (!symbol || quantity <= 0 || price <= 0) {
       throw new BadRequestException('Invalid trade data');
@@ -26,10 +41,14 @@ export class TradesService {
     const total = quantity * price;
 
     if (total > this.cash) {
-      throw new BadRequestException('Insufficient virtual cash');
+      throw new BadRequestException(
+        'Insufficient virtual cash',
+      );
     }
 
-    const currentQuantity = this.positions[symbol] ?? 0;
+    const currentQuantity =
+      this.positions[symbol] ?? 0;
+
     const currentAveragePrice =
       this.averagePurchasePrices[symbol] ?? price;
 
@@ -45,13 +64,25 @@ export class TradesService {
     this.cash -= total;
 
     this.positions[symbol] = newQuantity;
-    this.averagePurchasePrices[symbol] = newAveragePrice;
+
+    this.averagePurchasePrices[symbol] =
+      newAveragePrice;
+
+    this.tradeHistory.unshift({
+      id: this.nextTradeId++,
+      type: 'BUY',
+      symbol,
+      quantity,
+      price: Number(price.toFixed(2)),
+      total: Number(total.toFixed(2)),
+      createdAt: new Date().toISOString(),
+    });
 
     return {
       success: true,
       symbol,
       quantity,
-      price,
+      price: Number(price.toFixed(2)),
       total: Number(total.toFixed(2)),
       remainingCash: Number(this.cash.toFixed(2)),
       positionQuantity: newQuantity,
@@ -62,108 +93,138 @@ export class TradesService {
   }
 
   sell(symbol: string, quantity: number, price: number) {
-  if (!symbol || quantity <= 0 || price <= 0) {
-    throw new BadRequestException('Invalid trade data');
+    if (!symbol || quantity <= 0 || price <= 0) {
+      throw new BadRequestException('Invalid trade data');
+    }
+
+    const currentQuantity =
+      this.positions[symbol] ?? 0;
+
+    if (currentQuantity <= 0) {
+      throw new BadRequestException(
+        'Instrument is not in portfolio',
+      );
+    }
+
+    if (quantity > currentQuantity) {
+      throw new BadRequestException(
+        'Insufficient position quantity',
+      );
+    }
+
+    const averagePurchasePrice =
+      this.averagePurchasePrices[symbol] ?? price;
+
+    const total =
+      quantity * price;
+
+    const realizedProfitLoss =
+      (price - averagePurchasePrice) * quantity;
+
+    const remainingQuantity =
+      currentQuantity - quantity;
+
+    this.cash += total;
+
+    if (remainingQuantity === 0) {
+      delete this.positions[symbol];
+      delete this.averagePurchasePrices[symbol];
+    } else {
+      this.positions[symbol] =
+        remainingQuantity;
+    }
+
+    this.tradeHistory.unshift({
+      id: this.nextTradeId++,
+      type: 'SELL',
+      symbol,
+      quantity,
+      price: Number(price.toFixed(2)),
+      total: Number(total.toFixed(2)),
+      realizedProfitLoss: Number(
+        realizedProfitLoss.toFixed(2),
+      ),
+      createdAt: new Date().toISOString(),
+    });
+
+    return {
+      success: true,
+      symbol,
+      quantity,
+      price: Number(price.toFixed(2)),
+      total: Number(total.toFixed(2)),
+      realizedProfitLoss: Number(
+        realizedProfitLoss.toFixed(2),
+      ),
+      remainingCash: Number(this.cash.toFixed(2)),
+      remainingQuantity,
+    };
   }
 
-  const currentQuantity = this.positions[symbol] ?? 0;
-
-  if (currentQuantity <= 0) {
-    throw new BadRequestException(
-      'Instrument is not in portfolio',
-    );
+  getHistory() {
+    return this.tradeHistory;
   }
-
-  if (quantity > currentQuantity) {
-    throw new BadRequestException(
-      'Insufficient position quantity',
-    );
-  }
-
-  const averagePurchasePrice =
-    this.averagePurchasePrices[symbol] ?? price;
-
-  const total = quantity * price;
-
-  const realizedProfitLoss =
-    (price - averagePurchasePrice) * quantity;
-
-  const remainingQuantity =
-    currentQuantity - quantity;
-
-  this.cash += total;
-
-  if (remainingQuantity === 0) {
-    delete this.positions[symbol];
-    delete this.averagePurchasePrices[symbol];
-  } else {
-    this.positions[symbol] = remainingQuantity;
-  }
-
-  return {
-    success: true,
-    symbol,
-    quantity,
-    price: Number(price.toFixed(2)),
-    total: Number(total.toFixed(2)),
-    realizedProfitLoss: Number(
-      realizedProfitLoss.toFixed(2),
-    ),
-    remainingCash: Number(this.cash.toFixed(2)),
-    remainingQuantity,
-  };
-}
 
   getPortfolio(prices: InstrumentPriceMap) {
-    const positions = Object.entries(this.positions).map(
-      ([symbol, quantity]) => {
-        const currentPrice = prices[symbol] ?? 0;
+    const positions = Object.entries(
+      this.positions,
+    ).map(([symbol, quantity]) => {
+      const currentPrice =
+        prices[symbol] ?? 0;
 
-        const averagePurchasePrice =
-          this.averagePurchasePrices[symbol] ?? currentPrice;
+      const averagePurchasePrice =
+        this.averagePurchasePrices[symbol] ??
+        currentPrice;
 
-        const marketValue =
-          quantity * currentPrice;
+      const marketValue =
+        quantity * currentPrice;
 
-        const investedCost =
-          quantity * averagePurchasePrice;
+      const investedCost =
+        quantity * averagePurchasePrice;
 
-        const profitLoss =
-          marketValue - investedCost;
+      const profitLoss =
+        marketValue - investedCost;
 
-        const profitLossPercent =
-          investedCost > 0
-            ? (profitLoss / investedCost) * 100
-            : 0;
+      const profitLossPercent =
+        investedCost > 0
+          ? (profitLoss / investedCost) * 100
+          : 0;
 
-        return {
-          symbol,
-          quantity,
-          currentPrice: Number(currentPrice.toFixed(2)),
-          averagePurchasePrice: Number(
+      return {
+        symbol,
+        quantity,
+        currentPrice:
+          Number(currentPrice.toFixed(2)),
+        averagePurchasePrice:
+          Number(
             averagePurchasePrice.toFixed(2),
           ),
-          marketValue: Number(marketValue.toFixed(2)),
-          investedCost: Number(investedCost.toFixed(2)),
-          profitLoss: Number(profitLoss.toFixed(2)),
-          profitLossPercent: Number(
+        marketValue:
+          Number(marketValue.toFixed(2)),
+        investedCost:
+          Number(investedCost.toFixed(2)),
+        profitLoss:
+          Number(profitLoss.toFixed(2)),
+        profitLossPercent:
+          Number(
             profitLossPercent.toFixed(2),
           ),
-        };
-      },
-    );
+      };
+    });
 
-    const investedValue = positions.reduce(
-      (sum, position) =>
-        sum + position.marketValue,
-      0,
-    );
+    const investedValue =
+      positions.reduce(
+        (sum, position) =>
+          sum + position.marketValue,
+        0,
+      );
 
-    const totalCost = positions.reduce(
-      (sum, position) =>
-        sum + position.investedCost,
-      0,
-    );
+    const totalCost =
+      positions.reduce(
+        (sum, position) =>
+          sum + position.investedCost,
+        0,
+      );
 
     const totalProfitLoss =
       investedValue - totalCost;
@@ -184,9 +245,10 @@ export class TradesService {
 
         return {
           ...position,
-          concentrationPercent: Number(
-            concentrationPercent.toFixed(2),
-          ),
+          concentrationPercent:
+            Number(
+              concentrationPercent.toFixed(2),
+            ),
         };
       });
 
@@ -206,31 +268,40 @@ export class TradesService {
         : 'NORMAL';
 
     return {
-      cash: Number(this.cash.toFixed(2)),
+      cash:
+        Number(this.cash.toFixed(2)),
 
-      investedValue: Number(
-        investedValue.toFixed(2),
-      ),
+      investedValue:
+        Number(
+          investedValue.toFixed(2),
+        ),
 
-      totalValue: Number(
-        (this.cash + investedValue).toFixed(2),
-      ),
+      totalValue:
+        Number(
+          (
+            this.cash + investedValue
+          ).toFixed(2),
+        ),
 
-      totalProfitLoss: Number(
-        totalProfitLoss.toFixed(2),
-      ),
+      totalProfitLoss:
+        Number(
+          totalProfitLoss.toFixed(2),
+        ),
 
-      totalProfitLossPercent: Number(
-        totalProfitLossPercent.toFixed(2),
-      ),
+      totalProfitLossPercent:
+        Number(
+          totalProfitLossPercent.toFixed(2),
+        ),
 
-      highestConcentration: Number(
-        highestConcentration.toFixed(2),
-      ),
+      highestConcentration:
+        Number(
+          highestConcentration.toFixed(2),
+        ),
 
       riskLevel,
 
-      positions: positionsWithConcentration,
+      positions:
+        positionsWithConcentration,
     };
   }
 }

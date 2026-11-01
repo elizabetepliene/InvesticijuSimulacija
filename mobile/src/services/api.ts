@@ -132,3 +132,24 @@ export async function sellInstrument(
 
   return data;
 }
+
+export type TradeHistoryItem = {
+  id: number;
+  type: 'BUY' | 'SELL';
+  symbol: string;
+  quantity: number;
+  price: number;
+  total: number;
+  realizedProfitLoss?: number;
+  createdAt: string;
+};
+
+export async function getTradeHistory(): Promise<TradeHistoryItem[]> {
+  const response = await fetch(`${API_URL}/trades/history`);
+
+  if (!response.ok) {
+    throw new Error('Neizdevās ielādēt darījumu vēsturi');
+  }
+
+  return response.json();
+}
