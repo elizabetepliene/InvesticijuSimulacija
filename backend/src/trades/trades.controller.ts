@@ -32,30 +32,25 @@ export class TradesController {
   }
 
   @Post('sell')
-sell(
-  @Body()
-  body: {
-    symbol: string;
-    quantity: number;
-    price: number;
-  },
-) {
-  return this.tradesService.sell(
-    body.symbol,
-    body.quantity,
-    body.price,
-  );
-}
-
-@Get('history')
-getHistory() {
-  return this.tradesService.getHistory();
-}
+  sell(
+    @Body()
+    body: {
+      symbol: string;
+      quantity: number;
+      price: number;
+    },
+  ) {
+    return this.tradesService.sell(
+      body.symbol,
+      body.quantity,
+      body.price,
+    );
+  }
 
   @Get('portfolio')
-  getPortfolio() {
+  async getPortfolio() {
     const instruments =
-      this.instrumentsService.findAll();
+      await this.instrumentsService.findAll();
 
     const prices = Object.fromEntries(
       instruments.map((instrument) => [
@@ -67,5 +62,10 @@ getHistory() {
     return this.tradesService.getPortfolio(
       prices,
     );
+  }
+
+  @Get('history')
+  getHistory() {
+    return this.tradesService.getHistory();
   }
 }

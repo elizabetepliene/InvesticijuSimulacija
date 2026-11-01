@@ -8,7 +8,7 @@ export class InstrumentsController {
   ) {}
 
   @Get()
-  findAll() {
+  async findAll() {
     return this.instrumentsService.findAll();
   }
 }
