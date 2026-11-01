@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { router } from 'expo-router';
 
 import {
   getInstruments,
@@ -58,7 +59,15 @@ export default function MarketScreen() {
     const isPositive = item.changePercent >= 0;
 
     return (
-      <Pressable style={styles.instrumentRow}>
+      <Pressable
+  style={styles.instrumentRow}
+  onPress={() =>
+    router.push({
+      pathname: '/instrument/[symbol]',
+      params: { symbol: item.symbol },
+    })
+  }
+>
         <View style={styles.instrumentLeft}>
           <View style={styles.symbolBox}>
             <Text style={styles.symbolLetter}>
